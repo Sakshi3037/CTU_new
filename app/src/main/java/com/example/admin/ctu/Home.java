@@ -2,6 +2,7 @@ package com.example.admin.ctu;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -13,9 +14,11 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.maps.android.heatmaps.HeatmapTileProvider;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -27,6 +30,7 @@ import java.io.IOException;
 public class Home extends Activity{
     TextView source, dest;
     SharedPreferences sp;
+    ProgressDialog myDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +53,10 @@ public class Home extends Activity{
         dest = (TextView) findViewById(R.id.dest);
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
+        myDialog = new ProgressDialog(this);
+        myDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        myDialog.setMessage("Updating");
+        myDialog.setCancelable(false);
         sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         int value = sp.getInt("Version", 1);
         if(value == 1) {
@@ -60,7 +68,7 @@ public class Home extends Activity{
         }
         DefaultHttpClient httpClient = new DefaultHttpClient();
         HttpGet httpGet = new HttpGet("http://nodejs-wirelessnetwork.rhcloud.com/isChanged");
-        HttpResponse httpResponse = null;
+        HttpResponse httpResponse;
         try {
             httpResponse = httpClient.execute(httpGet);
             HttpEntity httpEntity = httpResponse.getEntity();
@@ -104,6 +112,7 @@ public class Home extends Activity{
         int ver = Integer.parseInt(String.valueOf(serverVer.charAt(0)));
         if(ver != v)
         {
+            myDialog.show();
             d.updateDb();
             extDatabase ed = new extDatabase(d);
             ed.updateDatabase();
@@ -111,6 +120,7 @@ public class Home extends Activity{
             editor.putInt("Version", ver);
             editor.commit();
             Toast.makeText(getBaseContext(),"Updated", Toast.LENGTH_LONG).show();
+            myDialog.dismiss();
         }
 
     }
