@@ -2,11 +2,17 @@ package com.example.admin.ctu;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
@@ -16,9 +22,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.maps.android.heatmaps.HeatmapTileProvider;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -30,7 +33,6 @@ import java.io.IOException;
 public class Home extends Activity{
     TextView source, dest;
     SharedPreferences sp;
-    ProgressDialog myDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,12 +53,21 @@ public class Home extends Activity{
         mActionBar.setDisplayShowHomeEnabled(true);
         source = (TextView) findViewById(R.id.source);
         dest = (TextView) findViewById(R.id.dest);
+        if(!isNetworkAvailable())
+        {
+            AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+            alertDialog.setTitle("Alert");
+            alertDialog.setMessage("Internet is not working, not able to check for updates");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
+        }
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
-        myDialog = new ProgressDialog(this);
-        myDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        myDialog.setMessage("Updating");
-        myDialog.setCancelable(false);
         sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         int value = sp.getInt("Version", 1);
         if(value == 1) {
@@ -80,7 +91,12 @@ public class Home extends Activity{
             e.printStackTrace();
         }
     }
-
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_map, menu);
@@ -103,26 +119,46 @@ public class Home extends Activity{
         }
         return super.onOptionsItemSelected(item);
     }
-
+    private class updateDatabase extends AsyncTask<Integer, Void, Integer> {
+        ProgressDialog dialog;
+        @Override
+        protected void onPreExecute() {
+            dialog = new ProgressDialog(Home.this);
+            dialog.setTitle("Updating...");
+            dialog.setMessage("Please wait...");
+            dialog.setIndeterminate(true);
+            dialog.show();
+        }
+        @Override
+        protected Integer doInBackground(Integer... params) {
+            database d = new database(getBaseContext());
+            d.open();
+            d.updateDb();
+            int ver = params[0];
+            extDatabase ed = new extDatabase(d);
+            try {
+                ed.updateDatabase();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putInt("Version", ver);
+            editor.commit();
+            return null;
+        }
+        protected void onPostExecute(Integer result) {
+            dialog.dismiss();
+        }
+    }
     private void updateDatabase(String serverVer) throws JSONException {
         database d = new database(getBaseContext());
         d.open();
         sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         int v = sp.getInt("Version", 0);
         int ver = Integer.parseInt(String.valueOf(serverVer.charAt(0)));
-        if(ver != v)
-        {
-            myDialog.show();
-            d.updateDb();
-            extDatabase ed = new extDatabase(d);
-            ed.updateDatabase();
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("Version", ver);
-            editor.commit();
-            Toast.makeText(getBaseContext(),"Updated", Toast.LENGTH_LONG).show();
-            myDialog.dismiss();
+        if(ver != v) {
+           new updateDatabase().execute(ver);
         }
-
     }
 
     public void search(View view)
