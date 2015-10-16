@@ -1,6 +1,7 @@
 package com.example.admin.ctu;
 
 import android.app.ActionBar;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -17,6 +18,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
+import com.google.maps.android.heatmaps.Gradient;
 import com.google.maps.android.heatmaps.HeatmapTileProvider;
 
 import org.json.JSONArray;
@@ -83,7 +85,7 @@ public class map extends FragmentActivity implements LocationListener{
                 .data(list)
                 .build();
         overlay = map.addTileOverlay(new TileOverlayOptions().tileProvider(provider));
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 12));
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 14));
     }
 
     public boolean onOptionsItemSelected(MenuItem item) {
