@@ -14,6 +14,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlay;
@@ -59,7 +60,7 @@ public class map extends FragmentActivity implements LocationListener{
         LatLng position = null;
         try {
             String json = null;
-                InputStream is = getAssets().open("coordinates.json");
+                InputStream is = getAssets().open("roughness.json");
                 int size = is.available();
                 byte[] buffer = new byte[size];
                 is.read(buffer);
@@ -69,11 +70,39 @@ public class map extends FragmentActivity implements LocationListener{
             for(int i = 0; i < jsonArray.length(); i++)
             {
                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                LatLng latLng = new LatLng(jsonObject.getDouble("GPS_Lat"), jsonObject.getDouble("GPS_Lng"));
+                LatLng latLng = new LatLng(jsonObject.getDouble("gps_lat"), jsonObject.getDouble("gps_lng"));
                 list.add(latLng);
             }
-            position = new LatLng(jsonArray.getJSONObject(0).getDouble("GPS_Lat"),
-                    jsonArray.getJSONObject(0).getDouble("GPS_Lng"));
+            position = new LatLng(jsonArray.getJSONObject(0).getDouble("gps_lat"),
+                    jsonArray.getJSONObject(0).getDouble("gps_lng"));
+            is = getAssets().open("bump.json");
+            size = is.available();
+            buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            json = new String(buffer, "UTF-8");
+            jsonArray = new JSONArray(json);
+            for(int i = 0; i < jsonArray.length(); i++)
+            {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                LatLng latLng = new LatLng(jsonObject.getDouble("gps_lat"), jsonObject.getDouble("gps_lng"));
+               map.addMarker(new MarkerOptions().position(latLng));
+            }
+            is = getAssets().open("potholes.json");
+            size = is.available();
+            buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            json = new String(buffer, "UTF-8");
+            jsonArray = new JSONArray(json);
+            for(int i = 0; i < jsonArray.length(); i++)
+            {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                LatLng latLng = new LatLng(jsonObject.getDouble("gps_lat"), jsonObject.getDouble("gps_lng"));
+                map.addMarker(new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory
+                        .defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+            }
+
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -84,8 +113,9 @@ public class map extends FragmentActivity implements LocationListener{
         provider = new HeatmapTileProvider.Builder()
                 .data(list)
                 .build();
+        provider.setRadius(10);
         overlay = map.addTileOverlay(new TileOverlayOptions().tileProvider(provider));
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 14));
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 12));
     }
 
     public boolean onOptionsItemSelected(MenuItem item) {
